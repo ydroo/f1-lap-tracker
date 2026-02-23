@@ -33,7 +33,7 @@ tours_pilote = session.laps.pick_drivers(PILOTE)
 tours_valides = tours_pilote[tours_pilote["LapTime"].notna()]
 print(f"\nTours disponibles pour {PILOTE} à {COURSE} {ANNEE}:")
 for _, t in tours_valides.iterrows():
-    print(f"  Tour {int(t['LapNumber']):>3}  |  {t['LapTime']}  |  {t.get('Compound', '—')}")
+	print(f"  Tour {int(t['LapNumber']):>3}  |  {t['LapTime']}  |  {t.get('Compound', '—')}")
 
 tour_rapide = tours_valides.loc[tours_valides["LapTime"].idxmin()]
 print(f"\nTour le plus rapide : Tour {int(tour_rapide['LapNumber']):>3}  |  {tour_rapide['LapTime']}  |  {tour_rapide.get('Compound', '—')}")
@@ -44,8 +44,8 @@ TOUR = int(saisie_tour) if saisie_tour else premier_tour_valide
 
 # Vérification que le tour saisi est bien valide
 if TOUR not in tours_valides["LapNumber"].values:
-    print(f"\nErreur : le tour {TOUR} n'est pas disponible pour {PILOTE} à {COURSE} {ANNEE}.")
-    exit()
+	print(f"\nErreur : le tour {TOUR} n'est pas disponible pour {PILOTE} à {COURSE} {ANNEE}.")
+	exit()
 
 tour = tours_pilote[tours_pilote["LapNumber"] == TOUR].iloc[0]
 pos = tour.get_pos_data()
@@ -77,8 +77,21 @@ track_angle = circuit_info.rotation / 180 * np.pi
 track = pos_ref.loc[:, ("X", "Y")].to_numpy()
 rotated_track = rotate(track, track_angle)
 
+# Fermeture de la boucle du circuit de référence
+rotated_track = np.vstack([rotated_track, rotated_track[0]])
+
 pilot_track = pos.loc[:, ("X", "Y")].to_numpy()
 rotated_pilot = rotate(pilot_track, track_angle)
+
+# Sous-échantillonnage pour fluidité (::1 = plus précis, animation plus lente. ::3 = perte de précision, animation fluide)
+# ::1 compte tous les points de données (~ 300) pour l'animation, ::2 la moitié, etc...
+pos_anim = rotated_pilot[::2]
+x = pos_anim[:, 0].tolist()
+y = pos_anim[:, 1].tolist()
+
+# Fermeture de la boucle de la trajectoire du pilote
+x = x + [x[0]]
+y = y + [y[0]]
 
 trace_circuit = go.Scatter(
 	x=rotated_track[:, 0],
@@ -88,12 +101,6 @@ trace_circuit = go.Scatter(
 	name="Circuit",
 	hoverinfo="skip",
 )
-
-# Sous-échantillonnage pour fluidité (::1 = plus précis, animation plus lente. ::3 = perte de précision, animation fluide)
-# ::1 compte tous les points de données (~ 300) pour l'animation, ::2 la moitié, etc...
-pos_anim = rotated_pilot[::2]
-x = pos_anim[:, 0].tolist()
-y = pos_anim[:, 1].tolist()
 
 # Numéros de virages
 traces_virages = []
