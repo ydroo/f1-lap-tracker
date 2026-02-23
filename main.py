@@ -70,77 +70,86 @@ y = pos_anim["Y"].tolist()
 
 # Tracé complet du circuit (fond statique)
 trace_circuit = go.Scatter(
-    x=pos["X"],
-    y=pos["Y"],
-    mode="lines",
-    line=dict(color="rgba(255,255,255,0.15)", width=8),
-    name="Circuit",
-    hoverinfo="skip",
+	x=pos["X"],
+	y=pos["Y"],
+	mode="lines",
+	line=dict(color="rgba(255,255,255,0.15)", width=8),
+	name="Circuit",
+	hoverinfo="skip",
 )
 
 # Tracé parcouru (se dessine progressivement)
 trace_parcouru = go.Scatter(
-    x=[x[0]],
-    y=[y[0]],
-    mode="lines",
-    line=dict(color="red", width=2),
-    name=f"{PILOTE} — Tour {TOUR}",
+	x=[x[0]],
+	y=[y[0]],
+	mode="lines",
+	line=dict(color="red", width=2),
+	name=f"{PILOTE} — Tour {TOUR}",
 )
 
 # Point de la voiture
 trace_voiture = go.Scatter(
-    x=[x[0]],
-    y=[y[0]],
-    mode="markers",
-    marker=dict(color="white", size=10, symbol="circle"),
-    name=PILOTE,
+	x=[x[0]],
+	y=[y[0]],
+	mode="markers",
+	marker=dict(color="white", size=10, symbol="circle"),
+	name=PILOTE,
 )
 
 # Construction des frames d'animation
 frames = []
 for i in range(1, len(x) + 1):
-    frames.append(go.Frame(
-        data=[
-            trace_circuit,
-            go.Scatter(x=x[:i], y=y[:i], mode="lines", line=dict(color="red", width=2)),
-            go.Scatter(x=[x[i-1]], y=[y[i-1]], mode="markers", marker=dict(color="white", size=10)),
-        ],
-        name=str(i),
-    ))
+	frames.append(go.Frame(
+		data=[
+			trace_circuit,
+			go.Scatter(x=x[:i], y=y[:i], mode="lines", line=dict(color="red", width=2)),
+			go.Scatter(x=[x[i-1]], y=[y[i-1]], mode="markers", marker=dict(color="white", size=10)),
+		],
+		name=str(i),
+	))
 
 fig = go.Figure(
-    data=[trace_circuit, trace_parcouru, trace_voiture],
-    frames=frames,
+	data=[trace_circuit, trace_parcouru, trace_voiture],
+	frames=frames,
 )
 
 fig.update_layout(
-    title=f"{PILOTE} — {COURSE} {ANNEE} — Tour {TOUR}",
-    xaxis=dict(visible=False),
-    yaxis=dict(visible=False, scaleanchor="x"),
-    plot_bgcolor="#111111",
-    paper_bgcolor="#111111",
-    font=dict(color="white"),
-    showlegend=False,
-    # Boutons play / pause
-    updatemenus=[dict(
-        type="buttons",
-        showactive=False,
-        y=-0.08,
-        x=0.5,
-        xanchor="center",
-        buttons=[
-            dict(
-                label="▶  Play",
-                method="animate",
-                args=[None, dict(frame=dict(duration=30, redraw=True), fromcurrent=True)],
-            ),
-            dict(
-                label="⏸  Pause",
-                method="animate",
-                args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")],
-            ),
-        ],
-    )],
+	title=f"{PILOTE} — {COURSE} {ANNEE} — Tour {TOUR}",
+	xaxis=dict(visible=False),
+	yaxis=dict(visible=False, scaleanchor="x"),
+	plot_bgcolor="#111111",
+	paper_bgcolor="#111111",
+	font=dict(color="white"),
+	showlegend=False,
+	# Boutons play / pause
+	updatemenus=[dict(
+		type="buttons",
+		showactive=False,
+		y=-0.08,
+		x=0.5,
+		xanchor="center",
+		buttons=[
+			dict(
+				label="▶  Play",
+				method="animate",
+				args=[None, dict(frame=dict(duration=30, redraw=True), fromcurrent=True)],
+			),
+			dict(
+				label="⏸  Pause",
+				method="animate",
+				args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")],
+			),
+		],
+	)],
+	# Slider de progression
+	sliders=[dict(
+		currentvalue=dict(visible=False),
+		pad=dict(t=40),
+		steps=[
+			dict(method="animate", args=[[str(i)], dict(mode="immediate", frame=dict(duration=0))], label="")
+			for i in range(1, len(x) + 1)
+		],
+	)],
 )
 
 print("Ouverture de l'animation dans le navigateur...")
