@@ -35,6 +35,9 @@ print(f"\nTours disponibles pour {PILOTE} à {COURSE} {ANNEE}:")
 for _, t in tours_valides.iterrows():
     print(f"  Tour {int(t['LapNumber']):>3}  |  {t['LapTime']}  |  {t.get('Compound', '—')}")
 
+tour_rapide = tours_valides.loc[tours_valides["LapTime"].idxmin()]
+print(f"\nTour le plus rapide : Tour {int(tour_rapide['LapNumber']):>3}  |  {tour_rapide['LapTime']}  |  {tour_rapide.get('Compound', '—')}")
+
 premier_tour_valide = int(tours_valides.iloc[0]["LapNumber"])
 saisie_tour = input(f"\nNuméro de tour                           [{premier_tour_valide}] : ")
 TOUR = int(saisie_tour) if saisie_tour else premier_tour_valide
