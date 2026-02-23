@@ -11,11 +11,17 @@ print("║        F1 LAP TRACKER        ║")
 print("╚══════════════════════════════╝")
 print()
 
-ANNEE   = int(input("Année          (ex: 2023)                : "))
-COURSE  =     input("Course         (ex: Monaco Grand Prix)   : ")
-SESSION =     input("Session        (R / Q / FP1 / FP2 / FP3) : ").upper()
-PILOTE  =     input("Pilote         (ex: VER, HAM, LEC)       : ").upper()
-TOUR    = int(input("Numéro de tour (ex: 40)                  : "))
+saisie_annee   = input("Année          (ex: 2023)                [2023] : ")
+saisie_course  = input("Course         (ex: Monaco Grand Prix)   [Monaco Grand Prix] : ")
+saisie_session = input("Session        (R / Q / FP1 / FP2 / FP3) [R] : ")
+saisie_pilote  = input("Pilote         (ex: VER, HAM, LEC)       [VER] : ")
+saisie_tour    = input("Numéro de tour (ex: 40)                  [40] : ")
+
+ANNEE   = int(saisie_annee)          if saisie_annee   else 2023
+COURSE  =     saisie_course          if saisie_course  else "Monaco Grand Prix"
+SESSION =     saisie_session.upper() if saisie_session else "R"
+PILOTE  =     saisie_pilote.upper()  if saisie_pilote  else "VER"
+TOUR    = int(saisie_tour)           if saisie_tour    else 40
 
 # Chargement de la session
 print(f"\nChargement : {COURSE} {ANNEE} {SESSION}")
