@@ -1,4 +1,5 @@
 import fastf1
+import plotly.graph_objects as go
 import os
 
 # Mise en cache pour accélérer les exécutions suivantes
@@ -29,9 +30,33 @@ tour = tours_pilote[tours_pilote["LapNumber"] == TOUR].iloc[0]
 # Récupération des données de position
 pos = tour.get_pos_data()
 
-# Affichage
+# Affichage terminal
 print(f"\n{PILOTE} — {COURSE} {ANNEE} — Tour {TOUR}")
 print(f"Temps au tour : {tour['LapTime']}")
 print(f"Points de données : {len(pos)}")
 print()
 print(pos[["Time", "X", "Y", "Z"]])
+
+# Affichage graphique de la trajectoire
+print("\nOuverture du graphique dans le navigateur...")
+
+fig = go.Figure()
+
+fig.add_trace(go.Scatter(
+    x=pos["X"],
+    y=pos["Y"],
+    mode="lines",
+    line=dict(color="red", width=2),
+    name=f"{PILOTE} — Tour {TOUR}",
+))
+
+fig.update_layout(
+    title=f"{PILOTE} — {COURSE} {ANNEE} — Tour {TOUR}",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False, scaleanchor="x"),  # garde les proportions du circuit
+    plot_bgcolor="#111111",
+    paper_bgcolor="#111111",
+    font=dict(color="white"),
+)
+
+fig.show()
