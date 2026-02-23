@@ -1,6 +1,6 @@
 import fastf1
 import plotly.graph_objects as go
-import pandas as pd
+import numpy as np
 import os
 
 # Mise en cache pour accélérer les exécutions suivantes
@@ -57,51 +57,100 @@ print(f"Points de données : {len(pos)}")
 print()
 print(pos[["Time", "X", "Y", "Z"]])
 
-# ── Animation ─────────────────────────────────────────────────────
-
+# Animation
 print("\nPréparation de l'animation...")
 
-# Sous-échantillonnage pour fluidité (::1 = plus précis, animation plus lente. ::3 = perte de précision, animation fluide)
-# ::1 compte tous les points de données (~ 300) pour l'animation, ::2 la moitié, etc...
-pos_anim = pos.iloc[::2].reset_index(drop=True)
+# Tour le plus rapide de toute la session (tous pilotes) comme référence du circuit
+lap_ref = session.laps.pick_fastest()
+pos_ref = lap_ref.get_pos_data()
+circuit_info = session.get_circuit_info()
 
-x = pos_anim["X"].tolist()
-y = pos_anim["Y"].tolist()
+# Fonction de rotation des coordonnées (identique à la doc FastF1)
+def rotate(xy, angle):
+	rot_mat = np.array([[np.cos(angle), np.sin(angle)],
+						[-np.sin(angle), np.cos(angle)]])
+	return np.matmul(xy, rot_mat)
 
-# Tracé complet du circuit (fond statique)
+# Angle de rotation du circuit en radians
+track_angle = circuit_info.rotation / 180 * np.pi
+
+track = pos_ref.loc[:, ("X", "Y")].to_numpy()
+rotated_track = rotate(track, track_angle)
+
+pilot_track = pos.loc[:, ("X", "Y")].to_numpy()
+rotated_pilot = rotate(pilot_track, track_angle)
+
 trace_circuit = go.Scatter(
-	x=pos["X"],
-	y=pos["Y"],
+	x=rotated_track[:, 0],
+	y=rotated_track[:, 1],
 	mode="lines",
 	line=dict(color="rgba(255,255,255,0.15)", width=8),
 	name="Circuit",
 	hoverinfo="skip",
 )
 
-# Tracé parcouru (se dessine progressivement)
-trace_parcouru = go.Scatter(
-	x=[x[0]],
-	y=[y[0]],
-	mode="lines",
-	line=dict(color="red", width=2),
-	name=f"{PILOTE} — Tour {TOUR}",
-)
+# Sous-échantillonnage pour fluidité (::1 = plus précis, animation plus lente. ::3 = perte de précision, animation fluide)
+# ::1 compte tous les points de données (~ 300) pour l'animation, ::2 la moitié, etc...
+pos_anim = rotated_pilot[::2]
+x = pos_anim[:, 0].tolist()
+y = pos_anim[:, 1].tolist()
+
+# Numéros de virages
+traces_virages = []
+offset_vector = [500, 0]
+for _, virage in circuit_info.corners.iterrows():
+	txt = f"{virage['Number']}{virage['Letter']}"
+	offset_angle = virage["Angle"] / 180 * np.pi
+	offset_x, offset_y = rotate(offset_vector, offset_angle)
+	text_x = virage["X"] + offset_x
+	text_y = virage["Y"] + offset_y
+	text_x, text_y = rotate([text_x, text_y], track_angle)
+	track_x, track_y = rotate([virage["X"], virage["Y"]], track_angle)
+
+	# Ligne entre le circuit et le numéro
+	traces_virages.append(go.Scatter(
+		x=[track_x, text_x], y=[track_y, text_y],
+		mode="lines",
+		line=dict(color="grey", width=1),
+		hoverinfo="skip",
+		showlegend=False,
+	))
+	# Numéro
+	traces_virages.append(go.Scatter(
+		x=[text_x], y=[text_y],
+		mode="markers+text",
+		marker=dict(color="grey", size=16),
+		text=[txt],
+		textfont=dict(color="white", size=8),
+		textposition="middle center",
+		hoverinfo="skip",
+		showlegend=False,
+	))
 
 # Point de la voiture
-trace_voiture = go.Scatter(
-	x=[x[0]],
-	y=[y[0]],
+point_voiture = go.Scatter(
+	x=[x[0]], y=[y[0]],
 	mode="markers",
 	marker=dict(color="white", size=10, symbol="circle"),
 	name=PILOTE,
 )
 
+# Tracé parcouru (se dessine progressivement)
+trace_parcouru = go.Scatter(
+	x=[x[0]], y=[y[0]],
+	mode="lines",
+	line=dict(color="red", width=2),
+	name=f"{PILOTE} — Tour {TOUR}",
+)
+
+# Données statiques (circuit + virages)
+data_statique = [trace_circuit] + traces_virages
+
 # Construction des frames d'animation
 frames = []
 for i in range(1, len(x) + 1):
 	frames.append(go.Frame(
-		data=[
-			trace_circuit,
+		data=data_statique + [
 			go.Scatter(x=x[:i], y=y[:i], mode="lines", line=dict(color="red", width=2)),
 			go.Scatter(x=[x[i-1]], y=[y[i-1]], mode="markers", marker=dict(color="white", size=10)),
 		],
@@ -109,7 +158,7 @@ for i in range(1, len(x) + 1):
 	))
 
 fig = go.Figure(
-	data=[trace_circuit, trace_parcouru, trace_voiture],
+	data=data_statique + [trace_parcouru, point_voiture],
 	frames=frames,
 )
 
