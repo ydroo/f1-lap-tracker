@@ -5,14 +5,19 @@ import os
 os.makedirs("./cache", exist_ok=True)
 fastf1.Cache.enable_cache("./cache")
 
-ANNEE    = 2023
-COURSE   = "Monaco Grand Prix"
-SESSION  = "R"   # R = Course, Q = Qualifications, FP1/FP2/FP3 = Essais libres
-PILOTE   = "VER"
-TOUR     = 40
+print("╔══════════════════════════════╗")
+print("║        F1 LAP TRACKER        ║")
+print("╚══════════════════════════════╝")
+print()
+
+ANNEE   = int(input("Année          (ex: 2023)                : "))
+COURSE  =     input("Course         (ex: Monaco Grand Prix)   : ")
+SESSION =     input("Session        (R / Q / FP1 / FP2 / FP3) : ").upper()
+PILOTE  =     input("Pilote         (ex: VER, HAM, LEC)       : ").upper()
+TOUR    = int(input("Numéro de tour (ex: 40)                  : "))
 
 # Chargement de la session
-print(f"Chargement : {COURSE} {ANNEE} — {SESSION}")
+print(f"\nChargement : {COURSE} {ANNEE} {SESSION}")
 print("(La première exécution peut prendre quelques instants...)")
 session = fastf1.get_session(ANNEE, COURSE, SESSION)
 session.load(telemetry=True, laps=True, weather=False, messages=False)
