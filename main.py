@@ -38,9 +38,8 @@ for _, t in tours_valides.iterrows():
 tour_rapide = tours_valides.loc[tours_valides["LapTime"].idxmin()]
 print(f"\nTour le plus rapide : Tour {int(tour_rapide['LapNumber']):>3}  |  {tour_rapide['LapTime']}  |  {tour_rapide.get('Compound', '—')}")
 
-premier_tour_valide = int(tours_valides.iloc[0]["LapNumber"])
-saisie_tour = input(f"\nNuméro de tour                           [{premier_tour_valide}] : ")
-TOUR = int(saisie_tour) if saisie_tour else premier_tour_valide
+saisie_tour = input(f"\nNuméro de tour                           [{int(tour_rapide['LapNumber'])}] : ")
+TOUR = int(saisie_tour) if saisie_tour else int(tour_rapide['LapNumber'])
 
 # Vérification que le tour saisi est bien valide
 if TOUR not in tours_valides["LapNumber"].values:
