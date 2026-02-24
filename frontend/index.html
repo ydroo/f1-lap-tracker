@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>F1 Lap Tracker</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<div class="loading" id="loading">
+		<div class="spinner"></div>
+	</div>
+
+	<div class="container">
+		<h1>🏎️ F1 Lap Tracker</h1>
+
+		<div class="controls">
+			<div class="control-group">
+				<label>Année</label>
+				<select id="year"></select>
+			</div>
+			<div class="control-group">
+				<label>Grand Prix</label>
+				<select id="event" disabled></select>
+			</div>
+			<div class="control-group">
+				<label>Session</label>
+				<select id="session" disabled>
+					<option value="R">Course</option>
+					<option value="Q">Qualifications</option>
+					<option value="FP1">Essais Libres 1</option>
+					<option value="FP2">Essais Libres 2</option>
+					<option value="FP3">Essais Libres 3</option>
+				</select>
+			</div>
+			<div class="control-group">
+				<label>Pilote</label>
+				<select id="driver" disabled></select>
+			</div>
+			<div class="control-group">
+				<label>Tour</label>
+				<select id="lap" disabled></select>
+			</div>
+		</div>
+
+		<div class="actions">
+			<button id="load" disabled>Charger Session</button>
+			<button id="visualize" disabled>Visualiser</button>
+		</div>
+
+		<canvas id="canvas"></canvas>
+
+		<div class="animation-controls" id="controls">
+			<button class="play-btn" id="play">▶</button>
+			<div class="progress" id="progress">
+				<div class="progress-fill" id="progress-fill"></div>
+			</div>
+		</div>
+	</div>
+
+	<script src="js/app.js"></script>
+</body>
+</html>

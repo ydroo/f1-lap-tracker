@@ -1,2 +1,4 @@
+fastapi
+uvicorn
 fastf1
-plotly
+pydantic
