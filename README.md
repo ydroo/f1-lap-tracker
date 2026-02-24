@@ -27,8 +27,8 @@ Tours disponibles pour VER à Monaco Grand Prix 2023:
 
 Numéro de tour  [23] :
 ```
-Les valeurs notés entre crochets ici sont les valeurs par défaut, elle sont retenu si l'input est vide.
-Le programme ouvre ensuite une animation dans le navigateur avec le tracé du circuit, les numéros de virages et le point de la voiture qui se déplace (pas du tout en temps réel).
+Les valeurs notées entre crochets ici sont les valeurs par défaut, elle sont retenues si l'input est vide.
+Le programme ouvre ensuite une animation dans le navigateur avec le tracé du circuit, les numéros de virages et le point de la voiture qui se déplace, pas encore en temps réel.
 
 ![Demo F1 Lap Tracker](demo.gif)
 
@@ -61,7 +61,7 @@ Il s'agit d'une base pour un futur simulateur d'analyse de performance.
 
 ## Fonctionnalités
 
-- Saisie interactive avec valeurs par défaut (appuyer sur Entrée pour les utiliser)
+- Saisie interactive avec valeurs par défaut (appuyer seulement sur Entrée pour les utiliser)
 - Affichage des tours disponibles avec temps au tour et composé de pneu
 - Tour le plus rapide mis en avant automatiquement
 - Tracé du circuit basé sur le tour le plus rapide de la session
@@ -104,12 +104,13 @@ Attention ! Le sous-dossier `./cache/` peut s'avérer être très volumineux apr
 
 ## Prochaines étapes (ordre non exhaustif)
 
-- Interface web avec Dash (remplacement du terminal)
+- Interface web (remplacement du terminal)
 - Mode multi-pilotes sur le même tour
 - Onglets de statistiques (temps au tour, télémétrie, etc...)
 - Déploiement en ligne
 - Simulation en temps réel : Si le tour exploré a été effectué en 1min30, faire une animation de durée identique ou accélérée.
 - Afficher le circuit correspondant en arrière plan du tracé, avec les détails et affichages nécessaires
+- Régler la contrainte de performance lié aux chargements de données (bado locale, préchargements, serveur local, etc...)
 - Etc...
 
 ## Licence
