@@ -1,4 +1,5 @@
 import fastf1
+import fastf1.plotting
 import plotly.graph_objects as go
 import numpy as np
 import os
@@ -48,6 +49,12 @@ if TOUR not in tours_valides["LapNumber"].values:
 
 tour = tours_pilote[tours_pilote["LapNumber"] == TOUR].iloc[0]
 pos = tour.get_pos_data()
+
+# Couleur officielle de l'écurie
+try:
+	couleur = fastf1.plotting.get_driver_color(PILOTE, session)
+except Exception:
+	couleur = "#ffffff"
 
 # Affichage terminal
 print(f"\n{PILOTE} — {COURSE} {ANNEE} — Tour {TOUR}")
@@ -137,7 +144,7 @@ for _, virage in circuit_info.corners.iterrows():
 point_voiture = go.Scatter(
 	x=[x[0]], y=[y[0]],
 	mode="markers",
-	marker=dict(color="white", size=10, symbol="circle"),
+	marker=dict(color=couleur, size=10, symbol="circle"),
 	name=PILOTE,
 )
 
@@ -145,7 +152,7 @@ point_voiture = go.Scatter(
 trace_parcouru = go.Scatter(
 	x=[x[0]], y=[y[0]],
 	mode="lines",
-	line=dict(color="red", width=2),
+	line=dict(color=couleur, width=2),
 	name=f"{PILOTE} — Tour {TOUR}",
 )
 
@@ -157,8 +164,8 @@ frames = []
 for i in range(1, len(x) + 1):
 	frames.append(go.Frame(
 		data=data_statique + [
-			go.Scatter(x=x[:i], y=y[:i], mode="lines", line=dict(color="red", width=2)),
-			go.Scatter(x=[x[i-1]], y=[y[i-1]], mode="markers", marker=dict(color="white", size=10)),
+			go.Scatter(x=x[:i], y=y[:i], mode="lines", line=dict(color=couleur, width=2)),
+			go.Scatter(x=[x[i-1]], y=[y[i-1]], mode="markers", marker=dict(color=couleur, size=10)),
 		],
 		name=str(i),
 	))
