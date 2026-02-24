@@ -1,7 +1,5 @@
 @echo off
-echo ╔══════════════════════════════╗
-echo ║     F1 LAP TRACKER v2.0      ║
-echo ╚══════════════════════════════╝
+echo +-----F1 LAP TRACKER v2.0-----+
 echo.
 
 cd backend
