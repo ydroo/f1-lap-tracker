@@ -2,3 +2,4 @@ fastapi
 uvicorn
 fastf1
 pydantic
+psycopg2-binary

@@ -22,7 +22,7 @@ async function loadEvents() {
 	const year = $('year').value;
 	loading.classList.add('active');
 	const events = await fetch(`${API}/events/${year}`).then(r => r.json());
-	$('event').innerHTML = events.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
+	$('event').innerHTML = events.map(e => `<option value="${e.circuit}">${e.circuit}</option>`).join('');
 	$('event').disabled = false;
 	$('session').disabled = false;
 	$('load').disabled = false;
@@ -36,7 +36,7 @@ async function loadSession() {
 	
 	loading.classList.add('active');
 	const drivers = await fetch(`${API}/drivers/${year}/${encodeURIComponent(event)}/${session}`).then(r => r.json());
-	$('driver').innerHTML = drivers.map(d => `<option value="${d.code}">${d.code}</option>`).join('');
+	$('driver').innerHTML = drivers.map(d => `<option value="${d.code}">${d.code} — ${d.team}</option>`).join('');
 	$('driver').disabled = false;
 	await loadLaps();
 	loading.classList.remove('active');
@@ -50,11 +50,10 @@ async function loadLaps() {
 	
 	const laps = await fetch(`${API}/laps/${year}/${encodeURIComponent(event)}/${session}/${driver}`).then(r => r.json());
 	$('lap').innerHTML = laps.map(l => {
-		const mark = l.is_fastest ? ' ⚡' : '';
-		return `<option value="${l.lap_number}">Tour ${l.lap_number} - ${l.lap_time}${mark}</option>`;
+		const ms = l.lap_time_ms;
+		const time = ms ? `${Math.floor(ms/60000)}:${String(Math.floor((ms%60000)/1000)).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}` : '?';
+		return `<option value="${l.lap_number}">Tour ${l.lap_number} — ${time} (${l.compound || '?'})</option>`;
 	}).join('');
-	const fastest = laps.find(l => l.is_fastest);
-	if (fastest) $('lap').value = fastest.lap_number;
 	$('lap').disabled = false;
 	$('visualize').disabled = false;
 }
@@ -92,8 +91,8 @@ function draw() {
 	ctx.fillStyle = '#12121a';
 	ctx.fillRect(0, 0, w, h);
 
-	const allX = [...data.circuit_x, ...data.x];
-	const allY = [...data.circuit_y, ...data.y];
+	const allX = [...data.track.x, ...data.driver.x];
+	const allY = [...data.track.y, ...data.driver.y];
 	const minX = Math.min(...allX);
 	const maxX = Math.max(...allX);
 	const minY = Math.min(...allY);
@@ -108,10 +107,10 @@ function draw() {
 	ctx.strokeStyle = 'rgba(255,255,255,0.2)';
 	ctx.lineWidth = 6;
 	ctx.beginPath();
-	const [sx, sy] = transform(data.circuit_x[0], data.circuit_y[0]);
+	const [sx, sy] = transform(data.track.x[0], data.track.y[0]);
 	ctx.moveTo(sx, sy);
-	for (let i = 1; i < data.circuit_x.length; i++) {
-		const [x, y] = transform(data.circuit_x[i], data.circuit_y[i]);
+	for (let i = 1; i < data.track.x.length; i++) {
+		const [x, y] = transform(data.track.x[i], data.track.y[i]);
 		ctx.lineTo(x, y);
 	}
 	ctx.closePath();
@@ -120,55 +119,61 @@ function draw() {
 	// Numéros de virages
 	ctx.fillStyle = '#666';
 	ctx.font = '10px monospace';
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-	for (const c of data.corners) {
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		for (const c of data.corners) {
 		const [tx, ty] = transform(c.text_x, c.text_y);
-		ctx.beginPath();
-		ctx.arc(tx, ty, 10, 0, Math.PI * 2);
-		ctx.fill();
-		ctx.fillStyle = '#fff';
-		ctx.fillText(c.number, tx, ty);
+			ctx.beginPath();
+			ctx.arc(tx, ty, 10, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.fillStyle = '#fff';
+			ctx.fillText(c.number, tx, ty);
 		ctx.fillStyle = '#666';
 	}
 
 	// Trajectoire parcourue du pilote
 	if (frame > 0) {
-		ctx.strokeStyle = data.driver_color;
+		ctx.strokeStyle = data.driver.color;
 		ctx.lineWidth = 2;
 		ctx.beginPath();
-		const [px0, py0] = transform(data.x[0], data.y[0]);
+		const [px0, py0] = transform(data.driver.x[0], data.driver.y[0]);
 		ctx.moveTo(px0, py0);
 		for (let i = 1; i <= frame; i++) {
-			const [px, py] = transform(data.x[i], data.y[i]);
+			const [px, py] = transform(data.driver.x[i], data.driver.y[i]);
 			ctx.lineTo(px, py);
 		}
 		ctx.stroke();
 	}
 
 	// Position actuelle de la voiture
-	if (frame < data.x.length) {
-		const [cx, cy] = transform(data.x[frame], data.y[frame]);
-		ctx.fillStyle = data.driver_color;
+	if (frame < data.driver.x.length) {
+		const [cx, cy] = transform(data.driver.x[frame], data.driver.y[frame]);
+		ctx.fillStyle = data.driver.color;
 		ctx.beginPath();
 		ctx.arc(cx, cy, 6, 0, Math.PI * 2);
 		ctx.fill();
+
+		// Halo blanc autour de la voiture
+		ctx.strokeStyle = '#fff';
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+		ctx.stroke();
 	}
 
 	// Mise à jour de la barre de progression
-	$('progress-fill').style.width = `${(frame / data.x.length) * 100}%`;
+	$('progress-fill').style.width = `${(frame / data.driver.x.length) * 100}%`;
 }
 
 function animate() {
 	if (!playing || !data) return;
 	
-	// Avancer seulement tous les 5 frames pour ralentir la vitesse de l'animation
 	if (!animate.frameCounter) animate.frameCounter = 0;
 	animate.frameCounter++;
 	
 	if (animate.frameCounter >= 5) {
 		frame++;
-		if (frame >= data.x.length) frame = 0;
+		if (frame >= data.driver.x.length) frame = 0;
 		animate.frameCounter = 0;
 	}
 	
@@ -193,7 +198,7 @@ $('progress').addEventListener('click', e => {
 	if (!data) return;
 	const rect = $('progress').getBoundingClientRect();
 	const percent = (e.clientX - rect.left) / rect.width;
-	frame = Math.floor(percent * data.x.length);
+	frame = Math.floor(percent * data.driver.x.length);
 	draw();
 });
 
