@@ -162,11 +162,11 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 		driver_laps = sess.laps.pick_driver(driver)
 		driver_lap  = driver_laps[driver_laps["LapNumber"] == lap].iloc[0]
 		pos_data    = driver_lap.get_pos_data()
-		sampled     = pos_data.iloc[::2]
+		sampled     = pos_data.iloc[::1]
 
 		x = sampled["X"].values.tolist()
 		y = sampled["Y"].values.tolist()
-		t = pos_data["Time"].dt.total_seconds().tolist()[::2]
+		t = pos_data["Time"].dt.total_seconds().tolist()[::1] 
 	except Exception as e:
 		raise HTTPException(status_code=404, detail=f"Tour introuvable : {e}")
 
