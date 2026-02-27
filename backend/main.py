@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import fastf1
 import psycopg2
 import psycopg2.extras
@@ -43,6 +44,12 @@ def query(sql: str, params=None):
 		with conn.cursor() as cur:
 			cur.execute(sql, params)
 			return cur.fetchall()
+
+
+def rotate(xy, angle):
+	rot_mat = np.array([[np.cos(angle), np.sin(angle)],
+						[-np.sin(angle), np.cos(angle)]])
+	return np.matmul(xy, rot_mat)
 
 
 # Routes BDD (instantanées)
@@ -113,7 +120,7 @@ def get_laps(year: int, event: str, session: str, driver: str):
 @app.get("/position/{year}/{event}/{session}/{driver}/{lap}")
 def get_position(year: int, event: str, session: str, driver: str, lap: int):
 	"""
-	Données GPS d'un tour appel FastF1.
+	Données GPS d'un tour — appel FastF1.
 	Utilisé uniquement quand l'utilisateur lance l'animation.
 	"""
 	try:
@@ -122,20 +129,31 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=f"Erreur FastF1 : {e}")
 
-	# Trajectoire de référence du circuit
+	# Circuit de référence — meilleur tour de la session (pick_fastest)
 	try:
+		circuit_info = sess.get_circuit_info()
 		lap_ref = sess.laps.pick_fastest()
 		pos_ref = lap_ref.get_pos_data()
 
 		x_ref = pos_ref["X"].values.tolist()
 		y_ref = pos_ref["Y"].values.tolist()
 
-		# Détection des virages
-		corners = sess.get_circuit_info().corners
-		corner_points = [
-			{"number": int(row["Number"]), "x": float(row["X"]), "y": float(row["Y"])}
-			for _, row in corners.iterrows()
-		] if corners is not None and not corners.empty else []
+		# Virages avec offset (numéro décalé + ligne de connexion), sans rotation
+		corner_points = []
+		offset_vector = [500, 0]
+
+		for _, corner in circuit_info.corners.iterrows():
+			offset_angle = corner["Angle"] / 180 * np.pi
+			off_x, off_y = rotate(offset_vector, offset_angle)
+
+			corner_points.append({
+				"number":  f"{int(corner['Number'])}{corner.get('Letter', '') or ''}",
+				"track_x": float(corner["X"]),
+				"track_y": float(corner["Y"]),
+				"text_x":  float(corner["X"] + off_x),
+				"text_y":  float(corner["Y"] + off_y),
+			})
+
 	except Exception:
 		x_ref, y_ref, corner_points = [], [], []
 
@@ -144,13 +162,11 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 		driver_laps = sess.laps.pick_driver(driver)
 		driver_lap  = driver_laps[driver_laps["LapNumber"] == lap].iloc[0]
 		pos_data    = driver_lap.get_pos_data()
+		sampled     = pos_data.iloc[::2]
 
-		
-		pos_data = pos_data.iloc[::1]
-
-		x = pos_data["X"].values.tolist()
-		y = pos_data["Y"].values.tolist()
-		t = pos_data["Time"].dt.total_seconds().tolist()
+		x = sampled["X"].values.tolist()
+		y = sampled["Y"].values.tolist()
+		t = pos_data["Time"].dt.total_seconds().tolist()[::2]
 	except Exception as e:
 		raise HTTPException(status_code=404, detail=f"Tour introuvable : {e}")
 
@@ -180,7 +196,6 @@ def health():
 		return {"status": "ok", "db": "connected"}
 	except Exception as e:
 		return {"status": "error", "db": str(e)}
-	
 
 if __name__ == "__main__":
 	import uvicorn
