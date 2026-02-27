@@ -115,12 +115,12 @@ def get_laps(year: int, event: str, session: str, driver: str):
 	return [dict(r) for r in rows]
 
 
-# Route FastF1 (GPS uniquement pour l'animation)
+# Route FastF1 (GPS + vitesse pour l'animation)
 
 @app.get("/position/{year}/{event}/{session}/{driver}/{lap}")
 def get_position(year: int, event: str, session: str, driver: str, lap: int):
 	"""
-	Données GPS d'un tour — appel FastF1.
+	Données GPS + vitesse d'un tour — appel FastF1.
 	Utilisé uniquement quand l'utilisateur lance l'animation.
 	"""
 	try:
@@ -132,20 +132,18 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 	# Circuit de référence — meilleur tour de la session (pick_fastest)
 	try:
 		circuit_info = sess.get_circuit_info()
-		lap_ref = sess.laps.pick_fastest()
-		pos_ref = lap_ref.get_pos_data()
+		lap_ref      = sess.laps.pick_fastest()
+		pos_ref      = lap_ref.get_pos_data()
 
 		x_ref = pos_ref["X"].values.tolist()
 		y_ref = pos_ref["Y"].values.tolist()
 
-		# Virages avec offset (numéro décalé + ligne de connexion), sans rotation
+		# Virages avec offset
 		corner_points = []
 		offset_vector = [500, 0]
-
 		for _, corner in circuit_info.corners.iterrows():
 			offset_angle = corner["Angle"] / 180 * np.pi
 			off_x, off_y = rotate(offset_vector, offset_angle)
-
 			corner_points.append({
 				"number":  f"{int(corner['Number'])}{corner.get('Letter', '') or ''}",
 				"track_x": float(corner["X"]),
@@ -153,20 +151,33 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 				"text_x":  float(corner["X"] + off_x),
 				"text_y":  float(corner["Y"] + off_y),
 			})
-
 	except Exception:
 		x_ref, y_ref, corner_points = [], [], []
 
-	# Trajectoire du pilote pour ce tour
+	# Trajectoire + vitesse du pilote
 	try:
 		driver_laps = sess.laps.pick_driver(driver)
 		driver_lap  = driver_laps[driver_laps["LapNumber"] == lap].iloc[0]
-		pos_data    = driver_lap.get_pos_data()
-		sampled     = pos_data.iloc[::1]
 
-		x = sampled["X"].values.tolist()
-		y = sampled["Y"].values.tolist()
-		t = pos_data["Time"].dt.total_seconds().tolist()[::1] 
+		pos_data = driver_lap.get_pos_data()
+		car_data = driver_lap.get_car_data()
+
+		pos_t = pos_data["Time"].dt.total_seconds().values
+		car_t = car_data["Time"].dt.total_seconds().values
+		car_v = car_data["Speed"].values
+
+		speed_at_pos = np.interp(pos_t, car_t, car_v)
+		brake_at_pos = np.interp(pos_t, car_t, car_data["Brake"].values.astype(float))
+		drs_raw      = car_data["DRS"].values.astype(float)
+		drs_at_pos   = np.interp(pos_t, car_t, drs_raw)
+
+		x = pos_data["X"].values.tolist()
+		y = pos_data["Y"].values.tolist()
+		t = pos_t.tolist()
+		v = speed_at_pos.tolist()
+		b = [bool(round(val)) for val in brake_at_pos]
+		d = [int(round(val)) for val in drs_at_pos]
+
 	except Exception as e:
 		raise HTTPException(status_code=404, detail=f"Tour introuvable : {e}")
 
@@ -184,7 +195,7 @@ def get_position(year: int, event: str, session: str, driver: str, lap: int):
 	return {
 		"track":   {"x": x_ref, "y": y_ref},
 		"corners": corner_points,
-		"driver":  {"code": driver, "color": color, "x": x, "y": y, "t": t},
+		"driver":  {"code": driver, "color": color, "x": x, "y": y, "t": t, "v": v, "b": b, "d": d},
 	}
 
 # Santé

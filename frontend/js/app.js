@@ -86,7 +86,6 @@ function loadRotation() {
 	userRotation = saved !== null ? parseFloat(saved) : 0;
 }
 
-
 async function loadEvents() {
 	const year = $('year').value;
 	loading.classList.add('active');
@@ -237,6 +236,9 @@ async function visualize() {
 		x:     r.driver.x,
 		y:     r.driver.y,
 		t:     r.driver.t,
+		v:     r.driver.v || [],
+		b:     r.driver.b || [],
+		d:     r.driver.d || [],
 	}));
 
 	maxTime = Math.max(...driversData.map(d => d.t[d.t.length - 1]));
@@ -304,6 +306,81 @@ function frameForTime(driverData, time) {
 	return lo;
 }
 
+function posForTime(driverData, time) {
+	const t  = driverData.t;
+	const lo = frameForTime(driverData, time);
+	const hi = Math.min(lo + 1, t.length - 1);
+	if (lo === hi) return [driverData.x[lo], driverData.y[lo]];
+	const alpha = (time - t[lo]) / (t[hi] - t[lo]);
+	const x = driverData.x[lo] + alpha * (driverData.x[hi] - driverData.x[lo]);
+	const y = driverData.y[lo] + alpha * (driverData.y[hi] - driverData.y[lo]);
+	return [x, y];
+}
+
+function speedForTime(driverData, time) {
+	if (!driverData.v || driverData.v.length === 0) return null;
+	const t  = driverData.t;
+	const lo = frameForTime(driverData, time);
+	const hi = Math.min(lo + 1, t.length - 1);
+	if (lo === hi) return driverData.v[lo];
+	const alpha = (time - t[lo]) / (t[hi] - t[lo]);
+	return driverData.v[lo] + alpha * (driverData.v[hi] - driverData.v[lo]);
+}
+
+function brakeDrsForTime(driverData, time) {
+	const lo = frameForTime(driverData, time);
+	const brake = driverData.b[lo] || false;
+	// DRS actif = valeur 10 ou 12 selon FastF1
+	const drs   = driverData.d[lo] >= 10;
+	return { brake, drs };
+}
+
+function drawSpeedIndicator(transform) {
+	if (!driversData.length) return;
+	const w = canvas.width  / devicePixelRatio;
+	const h = canvas.height / devicePixelRatio;
+
+	const padding = 12;
+	const lineH   = 26;
+	const boxW    = 150;
+	const boxH    = padding * 2 + driversData.length * lineH;
+	const x       = w - boxW - 12;
+	const y       = 12;
+
+	// Fond semi-transparent
+	ctx.fillStyle = 'rgba(0,0,0,0.55)';
+	ctx.beginPath();
+	ctx.roundRect(x, y, boxW, boxH, 6);
+	ctx.fill();
+
+	driversData.forEach((d, i) => {
+		const speed = speedForTime(d, animTime);
+		const color = d.color.startsWith('#') ? d.color : `#${d.color}`;
+		const ly    = y + padding + i * lineH + lineH / 2;
+
+		// Pastille couleur
+		ctx.fillStyle = color;
+		ctx.beginPath();
+		ctx.arc(x + 14, ly, 5, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Code pilote
+		ctx.fillStyle    = '#ccc';
+		ctx.font         = 'bold 12px monospace';
+		ctx.textAlign    = 'left';
+		ctx.textBaseline = 'middle';
+		ctx.fillText(d.code, x + 26, ly);
+
+		// Couleur vitesse : vert DRS, rouge freinage, blanc normal
+		const { brake, drs } = brakeDrsForTime(d, animTime);
+		const speedColor = brake ? '#ff1744' : drs ? '#00e676' : '#fff';
+		ctx.fillStyle = speedColor;
+		ctx.font      = 'bold 14px monospace';
+		ctx.textAlign = 'right';
+		ctx.fillText(speed !== null ? `${Math.round(speed)} km/h` : '—', x + boxW - padding, ly);
+	});
+}
+
 function drawTrack(transform) {
 	const path = new Path2D();
 	const [sx, sy] = transform(trackData.x[0], trackData.y[0]);
@@ -364,30 +441,31 @@ function draw() {
 
 	drawTrack(transform);
 	drawCornerLabels(transform);
+	drawSpeedIndicator();
 
 	// Trajectoires et voitures
 	for (const d of driversData) {
 		const frame = frameForTime(d, animTime);
 		const color = d.color.startsWith('#') ? d.color : `#${d.color}`;
 
-		// Trajectoire parcourue
-		if (frame > 0) {
-			ctx.strokeStyle = color;
-			ctx.lineWidth   = 2;
-			ctx.lineJoin    = 'round';
-			ctx.lineCap     = 'round';
-			ctx.beginPath();
-			const [px0, py0] = transform(d.x[0], d.y[0]);
-			ctx.moveTo(px0, py0);
-			for (let i = 1; i <= frame; i++) {
-				const [px, py] = transform(d.x[i], d.y[i]);
-				ctx.lineTo(px, py);
-			}
-			ctx.stroke();
-		}
+		// Position interpolée (calculée en premier)
+		const [ipx, ipy] = posForTime(d, animTime);
+		const [cx, cy]   = transform(ipx, ipy);
 
-		// Point voiture
-		const [cx, cy] = transform(d.x[frame], d.y[frame]);
+		// Trajectoire parcourue (étendue jusqu'à la position interpolée)
+		ctx.strokeStyle = color;
+		ctx.lineWidth   = 2;
+		ctx.lineJoin    = 'round';
+		ctx.lineCap     = 'round';
+		ctx.beginPath();
+		const [px0, py0] = transform(d.x[0], d.y[0]);
+		ctx.moveTo(px0, py0);
+		for (let i = 1; i <= frame; i++) {
+			const [px, py] = transform(d.x[i], d.y[i]);
+			ctx.lineTo(px, py);
+		}
+		ctx.lineTo(cx, cy);
+		ctx.stroke();
 		ctx.fillStyle = color;
 		ctx.beginPath();
 		ctx.arc(cx, cy, 6, 0, Math.PI * 2);
